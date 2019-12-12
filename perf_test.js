@@ -8,26 +8,27 @@ const url = process.env.URL || 'https://www.example.com/';
     const requestCount = [];
     let type;
     try {
-        await page.setRequestInterception(true);
-        page.on('request', interceptedRequest => {
-
-            type = interceptedRequest.resourceType()
+        page.on('response', theResponse => {
+            type = theResponse.request().resourceType()
             if (type === 'xhr' || type === 'fetch') {
                 requestCount.push({
-                    url: interceptedRequest.url(),
-                    type: interceptedRequest.resourceType()
+                    url: theResponse.url(),
+                    type
                 })
             }
-            interceptedRequest.continue();
-        });
 
+        });
         await page.goto(url, {
             waitUntil: 'networkidle2'
         });
+        const performanceTiming = JSON.parse(
+            await page.evaluate(() => JSON.stringify(window.performance.timing))
+        );
 
         const perfMetrics = await page.metrics();
         const res = JSON.stringify({
             metrics: perfMetrics,
+            performanceTiming,
             xhr_fetch: {
                 count: requestCount.length,
                 urls: requestCount
